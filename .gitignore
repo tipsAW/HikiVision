@@ -1,0 +1,43 @@
+# Python / Virtual Environment
+backend/venv/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.parquet
+backend/temp_data/*
+!backend/temp_data/.gitkeep
+
+# Node / Frontend
+frontend/node_modules/
+node_modules/
+frontend/dist/
+dist/
+dist-ssr/
+*.local
+
+# Logs and OS
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
+# Local data exports/uploads
+*.xlsx
+*.xls
+*.csv
+!*.example.csv
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
