@@ -23,7 +23,7 @@ const initialState: AppState = {
   startDate: '',
   endDate: '',
   startTime: '12:00',
-  endTime: '15:30',
+  endTime: '15:00',
   empleado: '',
   area: ''
 };
@@ -47,7 +47,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       startDate: '', 
       endDate: '', 
       startTime: '12:00', 
-      endTime: '15:30', 
+      endTime: '15:00', 
       empleado: '', 
       area: '' 
     }));

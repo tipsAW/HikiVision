@@ -123,8 +123,8 @@ export const UploadPage: React.FC = () => {
           </div>
           
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>
-              Ir al Dashboard
+            <button className="btn btn-primary" onClick={() => navigate('/lunch')}>
+              Ir a Control de Almuerzo
             </button>
           </div>
         </div>

@@ -80,7 +80,7 @@ def get_persons_summary(df: pd.DataFrame):
     return res.to_dict('records')
 
 def get_lunch_control(df: pd.DataFrame):
-    # Asume que ya viene filtrada por el rango de almuerzo (ej 12:00 - 15:30)
+    # Asume que ya viene filtrada por el rango de almuerzo (ej 12:00 - 15:00)
     # Agrupamos por empleado + fecha
     grouped = df.groupby(['codigo_empleado', 'nombre_empleado', 'fecha_parsed']).agg(
         salida_estimada=('datetime', 'min'),

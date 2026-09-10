@@ -36,7 +36,7 @@ def get_dashboard(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     start_time: Optional[str] = "12:00",
-    end_time: Optional[str] = "15:30",
+    end_time: Optional[str] = "15:00",
     empleado: Optional[str] = None,
     area: Optional[str] = None
 ):
@@ -53,7 +53,7 @@ def get_persons(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     start_time: Optional[str] = "12:00",
-    end_time: Optional[str] = "15:30",
+    end_time: Optional[str] = "15:00",
     empleado: Optional[str] = None,
     area: Optional[str] = None
 ):
@@ -70,7 +70,7 @@ def get_lunch(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     start_time: Optional[str] = "12:00",
-    end_time: Optional[str] = "15:30",
+    end_time: Optional[str] = "15:00",
     empleado: Optional[str] = None,
     area: Optional[str] = None
 ):
@@ -87,7 +87,7 @@ def get_details(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     start_time: Optional[str] = "12:00",
-    end_time: Optional[str] = "15:30",
+    end_time: Optional[str] = "15:00",
     empleado: Optional[str] = None,
     area: Optional[str] = None
 ):
@@ -107,7 +107,7 @@ def export_report(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     start_time: Optional[str] = "12:00",
-    end_time: Optional[str] = "15:30",
+    end_time: Optional[str] = "15:00",
     empleado: Optional[str] = None,
     area: Optional[str] = None
 ):
