@@ -6,15 +6,23 @@ from api.router import router
 app = FastAPI(title="Excel Attendance Analysis API")
 
 # Configurar CORS para permitir peticiones desde el frontend (React)
+origins = [
+    "https://hikivision-frontend.onrender.com",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000"
+]
 cors_origins_env = os.getenv("CORS_ORIGINS")
 if cors_origins_env:
-    origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
-else:
-    origins = ["*"]
+    for orig in cors_origins_env.split(","):
+        o = orig.strip()
+        if o and o not in origins:
+            origins.append(o)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://.*\.onrender\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
