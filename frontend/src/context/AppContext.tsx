@@ -9,6 +9,8 @@ interface AppState {
   endTime: string;
   empleado: string;
   area: string;
+  semana: string;
+  diaSemana: string;
 }
 
 interface AppContextType {
@@ -18,14 +20,29 @@ interface AppContextType {
   clearFilters: () => void;
 }
 
+export const getDefaultDateRange = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return {
+    startDate: `${year}-${month}-01`,
+    endDate: `${year}-${month}-${day}`
+  };
+};
+
+const defaultDates = getDefaultDateRange();
+
 const initialState: AppState = {
   fileId: null,
-  startDate: '',
-  endDate: '',
+  startDate: defaultDates.startDate,
+  endDate: defaultDates.endDate,
   startTime: '12:00',
   endTime: '15:00',
   empleado: '',
-  area: ''
+  area: '',
+  semana: 'todas',
+  diaSemana: 'todos'
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -42,14 +59,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const clearFilters = () => {
+    const dates = getDefaultDateRange();
     setState(prev => ({ 
       ...prev, 
-      startDate: '', 
-      endDate: '', 
+      startDate: dates.startDate, 
+      endDate: dates.endDate, 
       startTime: '12:00', 
       endTime: '15:00', 
       empleado: '', 
-      area: '' 
+      area: '',
+      semana: 'todas',
+      diaSemana: 'todos'
     }));
   };
 

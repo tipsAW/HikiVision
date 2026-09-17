@@ -3,14 +3,29 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAppContext } from '../context/AppContext';
 import { API_BASE_URL } from '../config';
-import { Clock, Search, Upload, Download } from 'lucide-react';
+import { Clock, Search, Upload, Download, Calendar } from 'lucide-react';
 
 export const LunchControl: React.FC = () => {
-  const { state } = useAppContext();
+  const { state, setFilters } = useAppContext();
   const navigate = useNavigate();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [availableWeeks, setAvailableWeeks] = useState<{ numero: number; label: string; start_date: string; end_date: string }[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<string>('todas');
+  const [selectedDay, setSelectedDay] = useState<string>('todos');
+
+  // Load available weeks from backend
+  useEffect(() => {
+    if (!state.fileId) return;
+    axios.get(`${API_BASE_URL}/api/weeks/${state.fileId}`)
+      .then(res => {
+        if (res.data?.semanas) {
+          setAvailableWeeks(res.data.semanas);
+        }
+      })
+      .catch(console.error);
+  }, [state.fileId]);
 
   const fetchData = async () => {
     if (!state.fileId) return;
@@ -37,6 +52,19 @@ export const LunchControl: React.FC = () => {
     fetchData();
   }, [state.fileId, state.startDate, state.endDate, state.empleado, state.area]);
 
+  const handleWeekChange = (val: string) => {
+    setSelectedWeek(val);
+    if (val !== 'todas') {
+      const found = availableWeeks.find(w => String(w.numero) === val);
+      if (found) {
+        setFilters({
+          startDate: found.start_date,
+          endDate: found.end_date
+        });
+      }
+    }
+  };
+
   const getStatusClass = (color: string) => {
     switch(color?.toLowerCase()) {
       case 'verde': return 'status-verde';
@@ -47,13 +75,26 @@ export const LunchControl: React.FC = () => {
     }
   };
 
-  const filteredData = data.filter(row => 
-    !searchTerm || (row.empleado && row.empleado.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredData = data.filter(row => {
+    const term = searchTerm.trim().toLowerCase();
+    const matchesSearch = !term || 
+      (row.empleado && row.empleado.toLowerCase().includes(term)) ||
+      (row.apellido && row.apellido.toLowerCase().includes(term));
+
+    const matchesDay = selectedDay === 'todos' || 
+      (row.dia_semana && row.dia_semana.toLowerCase() === selectedDay.toLowerCase());
+
+    const matchesWeek = selectedWeek === 'todas' || 
+      (row.numero_semana && String(row.numero_semana) === String(selectedWeek));
+
+    return matchesSearch && matchesDay && matchesWeek;
+  });
 
   const handleExport = () => {
     if (!state.fileId) return;
-    window.open(`${API_BASE_URL}/api/export/${state.fileId}?start_time=12:00&end_time=15:00`, '_blank');
+    const start = state.startDate || '';
+    const end = state.endDate || '';
+    window.open(`${API_BASE_URL}/api/export/${state.fileId}?start_date=${start}&end_date=${end}&start_time=12:00&end_time=15:00`, '_blank');
   };
 
   if (!state.fileId) {
@@ -84,12 +125,104 @@ export const LunchControl: React.FC = () => {
           </p>
         </div>
         
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Week selector */}
+          <div style={{ 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            background: 'rgba(255, 255, 255, 0.05)', 
+            padding: '6px 12px', 
+            borderRadius: '10px', 
+            border: '1px solid rgba(255, 255, 255, 0.1)', 
+            fontSize: '13px' 
+          }}>
+            <Calendar size={16} color="var(--accent-primary)" />
+            <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Semana:</span>
+            <select 
+              value={selectedWeek} 
+              onChange={e => handleWeekChange(e.target.value)}
+              className="input-field" 
+              style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', background: 'rgba(0,0,0,0.3)', color: 'var(--text-main)', cursor: 'pointer' }}
+            >
+              <option value="todas">Todas las semanas</option>
+              {availableWeeks.map(w => (
+                <option key={w.numero} value={String(w.numero)}>
+                  {w.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Day of week selector */}
+          <div style={{ 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            background: 'rgba(255, 255, 255, 0.05)', 
+            padding: '6px 12px', 
+            borderRadius: '10px', 
+            border: '1px solid rgba(255, 255, 255, 0.1)', 
+            fontSize: '13px' 
+          }}>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Día:</span>
+            <select 
+              value={selectedDay} 
+              onChange={e => setSelectedDay(e.target.value)}
+              className="input-field" 
+              style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', background: 'rgba(0,0,0,0.3)', color: 'var(--text-main)', cursor: 'pointer' }}
+            >
+              <option value="todos">Todos los días</option>
+              <option value="Lunes">Lunes</option>
+              <option value="Martes">Martes</option>
+              <option value="Miércoles">Miércoles</option>
+              <option value="Jueves">Jueves</option>
+              <option value="Viernes">Viernes</option>
+              <option value="Sábado">Sábado</option>
+              <option value="Domingo">Domingo</option>
+            </select>
+          </div>
+
+          {/* Date range picker */}
+          <div style={{ 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            background: 'rgba(255, 255, 255, 0.05)', 
+            padding: '6px 12px', 
+            borderRadius: '10px', 
+            border: '1px solid rgba(255, 255, 255, 0.1)', 
+            fontSize: '13px' 
+          }}>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Desde:</span>
+            <input 
+              type="date" 
+              value={state.startDate}
+              onChange={e => {
+                setSelectedWeek('todas');
+                setFilters({ startDate: e.target.value });
+              }}
+              className="input-field" 
+              style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', background: 'rgba(0,0,0,0.2)' }} 
+            />
+            <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Hasta:</span>
+            <input 
+              type="date" 
+              value={state.endDate}
+              onChange={e => {
+                setSelectedWeek('todas');
+                setFilters({ endDate: e.target.value });
+              }}
+              className="input-field" 
+              style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', background: 'rgba(0,0,0,0.2)' }} 
+            />
+          </div>
+
           <span style={{ 
             display: 'inline-flex', 
             alignItems: 'center', 
             gap: '6px', 
-            padding: '6px 14px', 
+            padding: '8px 14px', 
             borderRadius: '20px', 
             background: 'rgba(59, 130, 246, 0.15)', 
             color: 'var(--accent-primary)',
@@ -100,6 +233,7 @@ export const LunchControl: React.FC = () => {
             <Clock size={16} />
             12:00 PM - 15:00 PM
           </span>
+
           <button 
             className="btn btn-secondary" 
             onClick={handleExport}
@@ -109,6 +243,7 @@ export const LunchControl: React.FC = () => {
             <Download size={16} />
             <span>Exportar</span>
           </button>
+          
           <button 
             className="btn btn-secondary" 
             onClick={() => navigate('/')}
@@ -123,11 +258,11 @@ export const LunchControl: React.FC = () => {
 
       <div className="glass-panel" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-          <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>
+          <div style={{ position: 'relative', width: '340px', maxWidth: '100%' }}>
             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input 
               type="text"
-              placeholder="Buscar empleado..."
+              placeholder="Buscar por empleado o apellido..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="input-field"
@@ -149,7 +284,9 @@ export const LunchControl: React.FC = () => {
               <thead>
                 <tr>
                   <th>Empleado</th>
+                  <th>Apellido</th>
                   <th>Fecha</th>
+                  <th>Día</th>
                   <th>Salida Estimada</th>
                   <th>Regreso Estimado</th>
                   <th>Tiempo Fuera</th>
@@ -160,7 +297,19 @@ export const LunchControl: React.FC = () => {
                 {filteredData.map((row, idx) => (
                   <tr key={idx}>
                     <td style={{ fontWeight: 500 }}>{row.empleado}</td>
+                    <td style={{ fontWeight: 500, color: 'var(--accent-secondary)' }}>{row.apellido || '-'}</td>
                     <td>{row.fecha}</td>
+                    <td>
+                      <span style={{ 
+                        background: 'rgba(255, 255, 255, 0.05)', 
+                        padding: '2px 8px', 
+                        borderRadius: '6px', 
+                        fontSize: '12px', 
+                        color: 'var(--text-muted)' 
+                      }}>
+                        {row.dia_semana || '-'}
+                      </span>
+                    </td>
                     <td>{row.salida_estimada}</td>
                     <td>{row.regreso_estimado}</td>
                     <td>
@@ -177,7 +326,7 @@ export const LunchControl: React.FC = () => {
                 ))}
                 {filteredData.length === 0 && (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
                       No hay registros para mostrar
                     </td>
                   </tr>

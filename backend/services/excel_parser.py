@@ -24,10 +24,15 @@ def normalize_column_name(col):
     if col_str in ['id', 'id empleado', 'identificacion', 'identificador']:
         return 'codigo_empleado'
     
+    if any(x in col_str for x in ['apellido', 'apellidos']):
+        return 'apellido'
+
     if any(x in col_str for x in ['empleado', 'nombre', 'personal', 'colaborador']):
         if 'codigo' in col_str or 'cod ' in col_str or 'cod.' in col_str or 'id' in col_str:
             return 'codigo_empleado'
         return 'nombre_empleado'
+    if col_str in ['semana', 'dia de semana', 'dia semana', 'dia_semana', 'weekday', 'day']:
+        return 'semana'
     if any(x in col_str for x in ['fecha', 'dia', 'date']):
         return 'fecha'
     if any(x in col_str for x in ['hora', 'tiempo', 'time', 'marcacion', 'registro']):
@@ -81,19 +86,28 @@ def parse_time(val):
 def parse_date(val):
     if pd.isna(val):
         return None
-    if isinstance(val, datetime):
-        return val.date()
-    if isinstance(val, pd.Timestamp):
+    if isinstance(val, (datetime, pd.Timestamp)):
         return val.date()
     if isinstance(val, str):
         val = val.strip()
-        try:
-            return pd.to_datetime(val, dayfirst=True).date()
-        except Exception:
+        if not val:
+            return None
+        # ISO / standard YYYY-MM-DD or YYYY/MM/DD: must NOT be dayfirst
+        if re.match(r'^\d{4}[-/]\d{1,2}[-/]\d{1,2}', val):
             try:
-                return pd.to_datetime(val).date()
+                return pd.to_datetime(val, dayfirst=False).date()
             except Exception:
-                return None
+                pass
+        # DD/MM/YYYY or DD-MM-YYYY: day comes first
+        if re.match(r'^\d{1,2}[-/]\d{1,2}[-/]\d{4}', val):
+            try:
+                return pd.to_datetime(val, dayfirst=True).date()
+            except Exception:
+                pass
+        try:
+            return pd.to_datetime(val).date()
+        except Exception:
+            return None
     return None
 
 def process_uploaded_file(file_bytes: bytes, filename: str):
@@ -138,9 +152,28 @@ def process_uploaded_file(file_bytes: bytes, filename: str):
     if 'codigo_empleado' not in df.columns:
         df['codigo_empleado'] = df['nombre_empleado']
         
+    # Ensure apellido exists
+    if 'apellido' not in df.columns:
+        df['apellido'] = ''
+    else:
+        df['apellido'] = df['apellido'].fillna('').astype(str).str.strip()
+        
     # Standardize data types
     df['fecha_parsed'] = df['fecha'].apply(parse_date)
     df['hora_parsed'] = df['hora'].apply(parse_time)
+    
+    # Calculate day and week numbers
+    dias_espanol = {
+        1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves',
+        5: 'Viernes', 6: 'Sábado', 7: 'Domingo'
+    }
+    df['dia_semana'] = df['fecha_parsed'].apply(lambda d: dias_espanol.get(d.isoweekday(), '') if d else '')
+    df['numero_semana'] = df['fecha_parsed'].apply(lambda d: int(d.isocalendar()[1]) if d else 0)
+    
+    if 'semana' not in df.columns:
+        df['semana'] = df['dia_semana']
+    else:
+        df['semana'] = df['semana'].fillna(df['dia_semana']).astype(str).str.strip()
     
     # Count errors
     invalid_rows_mask = df['fecha_parsed'].isna() | df['hora_parsed'].isna() | df['nombre_empleado'].isna()
@@ -168,12 +201,17 @@ def process_uploaded_file(file_bytes: bytes, filename: str):
     
     df_valid.to_parquet(temp_path, index=False)
     
+    min_date = str(df_valid['fecha_parsed'].min()) if not df_valid.empty else None
+    max_date = str(df_valid['fecha_parsed'].max()) if not df_valid.empty else None
+    
     return {
         "file_id": file_id,
         "registros_totales": original_count,
         "registros_validos": len(df_valid),
         "registros_error": int(error_count),
-        "columnas_detectadas": list(df.columns)
+        "columnas_detectadas": list(df.columns),
+        "min_date": min_date,
+        "max_date": max_date
     }
 
 def load_dataframe(file_id: str):

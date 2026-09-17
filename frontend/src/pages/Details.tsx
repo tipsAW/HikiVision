@@ -21,7 +21,9 @@ export const Details: React.FC = () => {
           start_time: state.startTime || undefined,
           end_time: state.endTime || undefined,
           empleado: state.empleado || undefined,
-          area: state.area || undefined
+          area: state.area || undefined,
+          semana: state.semana || undefined,
+          dia_semana: state.diaSemana || undefined
         };
         const response = await axios.get(`${API_BASE_URL}/api/details/${state.fileId}`, { params });
         setData(response.data);
@@ -57,6 +59,7 @@ export const Details: React.FC = () => {
                 <tr>
                   <th>Fecha</th>
                   <th>Empleado</th>
+                  <th>Apellido</th>
                   <th>Área</th>
                   <th>Hora</th>
                   <th>Nº Marcación Día</th>
@@ -67,6 +70,7 @@ export const Details: React.FC = () => {
                   <tr key={idx}>
                     <td>{row.fecha}</td>
                     <td style={{ fontWeight: 500 }}>{row.nombre_empleado}</td>
+                    <td style={{ fontWeight: 500, color: 'var(--accent-secondary)' }}>{row.apellido || '-'}</td>
                     <td>{row.area}</td>
                     <td style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>{row.hora}</td>
                     <td>Marcación {row.numero_marcacion}</td>
@@ -74,7 +78,7 @@ export const Details: React.FC = () => {
                 ))}
                 {data.length === 0 && (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
                       No se encontraron registros
                     </td>
                   </tr>

@@ -9,7 +9,9 @@ def filter_dataframe(df: pd.DataFrame,
                      start_time: str = None, 
                      end_time: str = None,
                      empleado: str = None,
-                     area: str = None):
+                     area: str = None,
+                     semana: str = None,
+                     dia_semana: str = None):
     mask = pd.Series(True, index=df.index)
     
     if start_date:
@@ -25,9 +27,30 @@ def filter_dataframe(df: pd.DataFrame,
         mask &= df['hora_parsed'] <= et
         
     if empleado:
-        mask &= df['nombre_empleado'].str.contains(empleado, case=False, na=False)
+        emp_term = str(empleado).strip().lower()
+        emp_mask = df['nombre_empleado'].astype(str).str.lower().str.contains(emp_term, na=False)
+        if 'apellido' in df.columns:
+            emp_mask |= df['apellido'].astype(str).str.lower().str.contains(emp_term, na=False)
+        mask &= emp_mask
+        
     if area:
         mask &= df['area'].str.contains(area, case=False, na=False)
+
+    if semana and semana.lower() not in ['todas', 'todos', 'all', '']:
+        try:
+            sem_int = int(semana)
+            if 'numero_semana' in df.columns:
+                mask &= df['numero_semana'] == sem_int
+        except ValueError:
+            if 'semana' in df.columns:
+                mask &= df['semana'].astype(str).str.lower().str.contains(semana.lower(), na=False)
+
+    if dia_semana and dia_semana.lower() not in ['todos', 'todas', 'all', '']:
+        target_dia = dia_semana.strip().lower()
+        if 'dia_semana' in df.columns:
+            mask &= df['dia_semana'].astype(str).str.lower() == target_dia
+        elif 'semana' in df.columns:
+            mask &= df['semana'].astype(str).str.lower().str.contains(target_dia, na=False)
         
     return df[mask].copy()
 
@@ -70,8 +93,12 @@ def get_dashboard_kpis(df: pd.DataFrame):
     }
 
 def get_persons_summary(df: pd.DataFrame):
-    # Agrupar por empleado para mostrar su primer y ultimo registro en el rango, y count
-    res = df.groupby(['codigo_empleado', 'nombre_empleado', 'area']).agg(
+    group_cols = ['codigo_empleado', 'nombre_empleado']
+    if 'apellido' in df.columns:
+        group_cols.append('apellido')
+    group_cols.append('area')
+
+    res = df.groupby(group_cols).agg(
         primer_registro=('hora', 'min'),
         ultimo_registro=('hora', 'max'),
         num_registros=('hora', 'count')
@@ -80,13 +107,26 @@ def get_persons_summary(df: pd.DataFrame):
     return res.to_dict('records')
 
 def get_lunch_control(df: pd.DataFrame):
-    # Asume que ya viene filtrada por el rango de almuerzo (ej 12:00 - 15:00)
-    # Agrupamos por empleado + fecha
-    grouped = df.groupby(['codigo_empleado', 'nombre_empleado', 'fecha_parsed']).agg(
-        salida_estimada=('datetime', 'min'),
-        regreso_estimado=('datetime', 'max'),
-        num_registros=('datetime', 'count')
-    ).reset_index()
+    if df.empty:
+        return []
+
+    group_cols = ['codigo_empleado', 'nombre_empleado', 'fecha_parsed']
+    agg_dict = {
+        'salida_estimada': ('datetime', 'min'),
+        'regreso_estimado': ('datetime', 'max'),
+        'num_registros': ('datetime', 'count')
+    }
+
+    if 'apellido' in df.columns:
+        agg_dict['apellido'] = ('apellido', 'first')
+    if 'dia_semana' in df.columns:
+        agg_dict['dia_semana'] = ('dia_semana', 'first')
+    if 'semana' in df.columns:
+        agg_dict['semana'] = ('semana', 'first')
+    if 'numero_semana' in df.columns:
+        agg_dict['numero_semana'] = ('numero_semana', 'first')
+
+    grouped = df.groupby(group_cols).agg(**agg_dict).reset_index()
     
     def calculate_status(row):
         if row['num_registros'] == 1:
@@ -106,9 +146,23 @@ def get_lunch_control(df: pd.DataFrame):
     resultados = []
     for _, row in grouped.iterrows():
         estado, mins, color = calculate_status(row)
+        
+        # Determine day name
+        dia_nombre = ''
+        if 'semana' in row and pd.notna(row['semana']) and str(row['semana']).strip():
+            dia_nombre = str(row['semana']).strip()
+        elif 'dia_semana' in row and pd.notna(row['dia_semana']) and str(row['dia_semana']).strip():
+            dia_nombre = str(row['dia_semana']).strip()
+
+        apellido_val = str(row['apellido']).strip() if ('apellido' in row and pd.notna(row['apellido']) and str(row['apellido']).strip().lower() != 'nan') else ''
+
         resultados.append({
-            "empleado": row['nombre_empleado'],
+            "codigo_empleado": str(row['codigo_empleado']),
+            "empleado": str(row['nombre_empleado']),
+            "apellido": apellido_val,
             "fecha": str(row['fecha_parsed']),
+            "dia_semana": dia_nombre,
+            "numero_semana": int(row['numero_semana']) if ('numero_semana' in row and pd.notna(row['numero_semana'])) else None,
             "salida_estimada": row['salida_estimada'].strftime('%H:%M'),
             "regreso_estimado": row['regreso_estimado'].strftime('%H:%M') if row['num_registros'] > 1 else "--",
             "tiempo_fuera_minutos": mins if mins > 0 else None,
@@ -116,6 +170,7 @@ def get_lunch_control(df: pd.DataFrame):
             "color": color
         })
         
+    resultados.sort(key=lambda x: (x['fecha'], x['empleado']))
     return resultados
 
 def generate_excel_report(df: pd.DataFrame, df_filtered: pd.DataFrame):
@@ -137,7 +192,14 @@ def generate_excel_report(df: pd.DataFrame, df_filtered: pd.DataFrame):
             lunch_df.to_excel(writer, sheet_name='Control Almuerzo', index=False)
             
         # 4. Detalle
-        df_filtered_export = df_filtered[['codigo_empleado', 'nombre_empleado', 'fecha', 'hora', 'area', 'numero_marcacion']]
+        export_cols = ['codigo_empleado', 'nombre_empleado']
+        if 'apellido' in df_filtered.columns:
+            export_cols.append('apellido')
+        export_cols.extend(['fecha', 'hora', 'area', 'numero_marcacion'])
+        if 'semana' in df_filtered.columns:
+            export_cols.append('semana')
+        valid_cols = [c for c in export_cols if c in df_filtered.columns]
+        df_filtered_export = df_filtered[valid_cols]
         df_filtered_export.to_excel(writer, sheet_name='Detalle Marcaciones', index=False)
         
     output.seek(0)

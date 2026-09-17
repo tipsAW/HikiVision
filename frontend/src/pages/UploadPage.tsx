@@ -12,7 +12,7 @@ export const UploadPage: React.FC = () => {
   const [result, setResult] = useState<any>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { setFileId } = useAppContext();
+  const { setFileId, setFilters } = useAppContext();
   const navigate = useNavigate();
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -47,6 +47,14 @@ export const UploadPage: React.FC = () => {
       });
       setResult(response.data);
       setFileId(response.data.file_id);
+      if (response.data.min_date && response.data.max_date) {
+        setFilters({
+          startDate: response.data.min_date,
+          endDate: response.data.max_date,
+          semana: 'todas',
+          diaSemana: 'todos'
+        });
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || "Error al subir el archivo");
     } finally {

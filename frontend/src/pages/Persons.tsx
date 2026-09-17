@@ -22,7 +22,9 @@ export const Persons: React.FC = () => {
           start_time: state.startTime || undefined,
           end_time: state.endTime || undefined,
           empleado: state.empleado || undefined,
-          area: state.area || undefined
+          area: state.area || undefined,
+          semana: state.semana || undefined,
+          dia_semana: state.diaSemana || undefined
         };
         const response = await axios.get(`${API_BASE_URL}/api/persons/${state.fileId}`, { params });
         setData(response.data);
@@ -45,7 +47,9 @@ export const Persons: React.FC = () => {
         start_time: state.startTime || '',
         end_time: state.endTime || '',
         empleado: state.empleado || '',
-        area: state.area || ''
+        area: state.area || '',
+        semana: state.semana || '',
+        dia_semana: state.diaSemana || ''
       });
       window.open(`${API_BASE_URL}/api/export/${state.fileId}?${params.toString()}`);
     } catch (err) {
@@ -79,6 +83,7 @@ export const Persons: React.FC = () => {
               <thead>
                 <tr>
                   <th>Empleado</th>
+                  <th>Apellido</th>
                   <th>Área</th>
                   <th>Primer Registro</th>
                   <th>Último Registro</th>
@@ -89,6 +94,7 @@ export const Persons: React.FC = () => {
                 {data.map((row, idx) => (
                   <tr key={idx}>
                     <td style={{ fontWeight: 500 }}>{row.nombre_empleado}</td>
+                    <td style={{ fontWeight: 500, color: 'var(--accent-secondary)' }}>{row.apellido || '-'}</td>
                     <td>{row.area}</td>
                     <td>{row.primer_registro}</td>
                     <td>{row.ultimo_registro}</td>
@@ -101,7 +107,7 @@ export const Persons: React.FC = () => {
                 ))}
                 {data.length === 0 && (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
                       No se encontraron personas con los filtros actuales
                     </td>
                   </tr>
