@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import datetime
+import pandas as pd
 
 from services.excel_parser import process_uploaded_file, load_dataframe, ExcelParserError
 from services.data_service import filter_dataframe, get_dashboard_kpis, get_persons_summary, get_lunch_control, generate_excel_report
